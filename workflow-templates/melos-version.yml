@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - master
+      - main
 jobs:
   call-melos-version:
     uses: appbrewingcompany/.github/.github/workflows/melos-version.yml@main
