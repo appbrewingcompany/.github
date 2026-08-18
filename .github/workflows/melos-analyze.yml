@@ -28,7 +28,7 @@ jobs:
           flutter-version-file: .fvmrc
           cache: true
 
-      - uses: bluefireteam/melos-action@68b03fa391f4242e956f7e39e9ee27c096b901e4 # v3.1.0
+      - uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
         with:
           run-bootstrap: false
 
@@ -38,11 +38,19 @@ jobs:
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
 
+      - name: Setup FVM symlink for Melos
+        run: |
+          mkdir -p .fvm
+          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
+
       - name: Bootstrap
         run: melos bootstrap
 
       - name: Analyze code
         run: melos analyze
 
+      - name: Install Realm dependencies
+        run: melos exec --depends-on="realm_dart" -- "dart run realm install"
+
       - name: Run tests
-        run: melos test
+        run: melos exec --dir-exists="test" --fail-fast -- "flutter test"
