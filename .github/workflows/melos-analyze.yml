@@ -38,6 +38,11 @@ jobs:
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
 
+      - name: Setup FVM symlink for Melos
+        run: |
+          mkdir -p .fvm
+          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
+
       - name: Bootstrap
         run: melos bootstrap
 
