@@ -39,7 +39,7 @@ jobs:
           echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
 
       - name: Install Melos
-        uses: bluefireteam/melos-action@68b03fa391f4242e956f7e39e9ee27c096b901e4 # v3.1.0
+        uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
         with:
           run-bootstrap: false
 
