@@ -1,37 +1,48 @@
 name: Melos Analyze
+
 on:
   workflow_call:
     secrets:
       PAT_TOKEN:
         required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
-      - uses: kuhnroyal/flutter-fvm-config-action@v3
-        id: fvm-config-action
-      - uses: subosito/flutter-action@v2
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
-          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
-      - uses: bluefireteam/melos-action@v3
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - uses: bluefireteam/melos-action@68b03fa391f4242e956f7e39e9ee27c096b901e4 # v3.1.0
         with:
           run-bootstrap: false
-      - name: Setup Git Auth for Dependencies
-        run: |
-          git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
 
-      - name: Link FVM SDK
+      - name: Configure git credentials for org dependencies
         run: |
-          mkdir -p .fvm
-          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
+
       - name: Bootstrap
         run: melos bootstrap
+
       - name: Analyze code
         run: melos analyze
+
       - name: Run tests
         run: melos test
