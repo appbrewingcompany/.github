@@ -6,4 +6,4 @@ jobs:
   call-melos-analyze:
     uses: appbrewingcompany/.github/.github/workflows/melos-analyze.yml@main
     secrets:
-      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}

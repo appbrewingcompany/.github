@@ -2,7 +2,7 @@ name: Melos Analyze
 on:
   workflow_call:
     secrets:
-      PRIVATE_REPO_TOKEN:
+      PAT_TOKEN:
         required: true
 jobs:
   analyze-and-test:
@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
       - uses: kuhnroyal/flutter-fvm-config-action@v3
         id: fvm-config-action
@@ -23,7 +23,7 @@ jobs:
           run-bootstrap: false
       - name: Setup Git Auth for Dependencies
         run: |
-          git config --global url."https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "git@github.com:"
 
       - name: Link FVM SDK
         run: |
