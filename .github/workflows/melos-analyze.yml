@@ -53,4 +53,9 @@ jobs:
         run: melos exec --depends-on="realm_dart" -- "dart run realm install"
 
       - name: Run tests
-        run: melos exec --dir-exists="test" --fail-fast -- "flutter test"
+        run: |
+          if melos run --list | awk '{print $1}' | grep -q "^test$"; then
+            melos run test
+          else
+            echo "No test script found in Melos config. Skipping tests."
+          fi
