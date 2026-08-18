@@ -1,0 +1,74 @@
+name: Auto Assign Reviewer and Assignee (Reusable)
+
+on:
+  workflow_call:
+    # No inputs needed, we pull everything from github.event and CODEOWNERS
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Assign Default Reviewer and PR Author
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.actor }}
+        run: |
+          # 1. Assign the person who created the PR as the Assignee
+          echo "Assigning PR author ($PR_AUTHOR) as the assignee..."
+          gh pr edit "$PR_URL" --add-assignee "$PR_AUTHOR"
+
+          # 2. Check how many reviewers are currently requested
+          REQUESTED_REVIEWERS=$(gh pr view "$PR_URL" --json reviewRequests --jq '.reviewRequests | length')
+          
+          if [ "$REQUESTED_REVIEWERS" -gt 0 ]; then
+            echo "PR already has $REQUESTED_REVIEWERS reviewer(s). Exiting."
+            exit 0
+          fi
+          
+          echo "No reviewers found. Searching for default CODEOWNER..."
+
+          # 3. Locate the CODEOWNERS file (it can be in 3 standard locations)
+          CODEOWNERS_FILE=""
+          for f in .github/CODEOWNERS docs/CODEOWNERS CODEOWNERS; do
+            if [ -f "$f" ]; then
+              CODEOWNERS_FILE="$f"
+              break
+            fi
+          done
+
+          if [ -z "$CODEOWNERS_FILE" ]; then
+            echo "No CODEOWNERS file found."
+            exit 0
+          fi
+
+          # 4. Extract the default reviewer(s) from the '*' wildcard rule
+          DEFAULT_RULE=$(grep -E '^\*\s+' "$CODEOWNERS_FILE" | head -n 1)
+          
+          if [ -z "$DEFAULT_RULE" ]; then
+            echo "No default '*' rule found in $CODEOWNERS_FILE."
+            exit 0
+          fi
+
+          RAW_REVIEWERS=$(echo "$DEFAULT_RULE" | awk '{$1=""; print $0}' | tr -d '@')
+          
+          # 5. Build the gh command arguments, ignoring the PR author
+          GH_ARGS=()
+          for r in $RAW_REVIEWERS; do
+            if [ "$r" != "$PR_AUTHOR" ]; then
+              GH_ARGS+=(--add-reviewer "$r")
+            fi
+          done
+          
+          # 6. Apply the reviewers
+          if [ ${#GH_ARGS[@]} -gt 0 ]; then
+            echo "Assigning default reviewers from CODEOWNERS..."
+            gh pr edit "$PR_URL" "${GH_ARGS[@]}"
+          else
+            echo "No valid default reviewers to assign (the only default owner is the PR author)."
+          fi
