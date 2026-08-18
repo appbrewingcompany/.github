@@ -43,6 +43,11 @@ jobs:
         with:
           run-bootstrap: false
 
+      - name: Setup FVM symlink for Melos
+        run: |
+          mkdir -p .fvm
+          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
+
       - name: Bootstrap Melos
         run: melos bootstrap
 
