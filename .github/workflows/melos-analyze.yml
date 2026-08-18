@@ -49,5 +49,8 @@ jobs:
       - name: Analyze code
         run: melos analyze
 
+      - name: Install Realm dependencies
+        run: melos exec --depends-on="realm_dart" -- "dart run realm install"
+
       - name: Run tests
-        run: melos test
+        run: melos exec --dir-exists="test" --fail-fast -- "flutter test"
