@@ -21,6 +21,9 @@ jobs:
       - uses: bluefireteam/melos-action@v3
         with:
           run-bootstrap: false
+      - name: Setup Git Auth for Dependencies
+        run: |
+          git config --global url."https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "git@github.com:"
       - name: Bootstrap
         run: melos bootstrap
       - name: Analyze code
