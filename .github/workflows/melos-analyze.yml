@@ -24,6 +24,11 @@ jobs:
       - name: Setup Git Auth for Dependencies
         run: |
           git config --global url."https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "git@github.com:"
+
+      - name: Link FVM SDK
+        run: |
+          mkdir -p .fvm
+          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
       - name: Bootstrap
         run: melos bootstrap
       - name: Analyze code
