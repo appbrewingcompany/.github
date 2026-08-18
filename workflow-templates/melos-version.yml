@@ -1,0 +1,11 @@
+name: Version and Release
+on:
+  push:
+    branches:
+      - main
+      - master
+jobs:
+  call-melos-version:
+    uses: appbrewingcompany/agent-marketplace/.github/workflows/melos-version.yml@main
+    secrets:
+      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}

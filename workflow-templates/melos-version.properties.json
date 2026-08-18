@@ -1,0 +1,8 @@
+{
+  "name": "Melos Version Workflow",
+  "description": "Run Melos version and push release tags on merge.",
+  "iconName": "dart",
+  "categories": [
+    "continuous integration"
+  ]
+}

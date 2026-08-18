@@ -1,0 +1,9 @@
+name: Melos Analyze
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  call-melos-analyze:
+    uses: appbrewingcompany/agent-marketplace/.github/workflows/melos-analyze.yml@main
+    secrets:
+      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}

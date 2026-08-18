@@ -1,0 +1,8 @@
+{
+  "name": "Auto Merge Workflow",
+  "description": "Automatically merge PRs when approved.",
+  "iconName": "github",
+  "categories": [
+    "automation"
+  ]
+}
