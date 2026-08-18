@@ -1,0 +1,29 @@
+name: Melos Analyze
+on:
+  workflow_call:
+    secrets:
+      PRIVATE_REPO_TOKEN:
+        required: true
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: kuhnroyal/flutter-fvm-config-action@v3
+        id: fvm-config-action
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+      - uses: bluefireteam/melos-action@v3
+        with:
+          run-bootstrap: false
+      - name: Bootstrap
+        run: melos bootstrap
+      - name: Analyze code
+        run: melos analyze
+      - name: Run tests
+        run: melos test

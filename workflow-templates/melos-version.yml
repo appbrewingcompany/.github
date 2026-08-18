@@ -6,6 +6,6 @@ on:
       - master
 jobs:
   call-melos-version:
-    uses: appbrewingcompany/agent-marketplace/.github/workflows/melos-version.yml@main
+    uses: appbrewingcompany/.github/.github/workflows/melos-version.yml@main
     secrets:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}

@@ -4,6 +4,6 @@ on:
     types: [opened, synchronize, reopened]
 jobs:
   call-melos-analyze:
-    uses: appbrewingcompany/agent-marketplace/.github/workflows/melos-analyze.yml@main
+    uses: appbrewingcompany/.github/.github/workflows/melos-analyze.yml@main
     secrets:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}

@@ -1,0 +1,189 @@
+# Review Workflow — the enforcement layer for free-plan private repos.
+#
+# Replaces both the old pr-gatekeeper.yml and the basic auto-merge.yml.
+# Implements the full review lifecycle:
+#   1. ubergaijin APPROVES a PR → auto-merge (squash) to main + delete branch
+#   2. ubergaijin CHANGES_REQUESTED or COMMENTED → notify @appbrew-agent with feedback
+#   3. appbrew-agent reviews are ignored (bot can't self-approve)
+#   4. Merge conflicts → comment on PR instead of silent failure
+#
+# This replaces what Team plan's "required reviewers" + "auto-merge" would do natively.
+
+name: Review Workflow
+
+on:
+  workflow_call:
+    secrets:
+      PAT_TOKEN:
+        required: true
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  handle-review:
+    runs-on: ubuntu-latest
+    # Only act on reviews from humans, never from the bot itself
+    if: github.event.review.user.login != 'appbrew-agent'
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const eventName = context.eventName;
+            const isReview = eventName === 'pull_request_review';
+            const isCheckSuite = eventName === 'check_suite';
+            
+            if (!isReview && !isCheckSuite) {
+              core.info(`Ignoring event ${eventName}`);
+              return;
+            }
+            
+            // Find the target PRs
+            let prsToExamine = [];
+            
+            if (isReview) {
+              // Exclude bot reviews
+              if (context.payload.review.user.login === 'appbrew-agent') {
+                core.info('Ignoring bot review');
+                return;
+              }
+              prsToExamine.push(context.payload.pull_request);
+            } else if (isCheckSuite) {
+              prsToExamine = context.payload.check_suite.pull_requests;
+              if (!prsToExamine || prsToExamine.length === 0) {
+                core.info('No pull requests associated with this check suite.');
+                return;
+              }
+            }
+
+            for (const prStub of prsToExamine) {
+              const prNumber = prStub.number;
+              
+              // Fetch full PR data
+              const prData = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              
+              if (prData.data.draft || prData.data.state !== 'open') {
+                core.info(`PR #${prNumber} is draft or closed, skipping`);
+                continue;
+              }
+
+              const prAuthor = prData.data.user.login;
+
+              // Check if approved
+              const reviews = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              
+              const meaningfulReviews = reviews.data.filter(r => ['APPROVED', 'CHANGES_REQUESTED'].includes(r.state));
+              if (meaningfulReviews.length === 0) {
+                core.info(`PR #${prNumber} has no meaningful reviews. Skipping.`);
+                continue;
+              }
+              
+              // Get the most recent meaningful review
+              const latestReview = meaningfulReviews[meaningfulReviews.length - 1];
+              
+              if (latestReview.state === 'CHANGES_REQUESTED') {
+                core.info(`PR #${prNumber} has requested changes. Not merging.`);
+                // If this was triggered by a review just now, notify agent.
+                if (isReview && prAuthor === 'appbrew-agent') {
+                  const reviewBody = context.payload.review.body || '';
+                  const reviewer = context.payload.review.user.login;
+                  const comment = `@appbrew-agent ${reviewer} requested changes on this PR.\n\n${reviewBody}\n\nPlease address the feedback.`;
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    body: comment,
+                  });
+                  core.info(`Notified @appbrew-agent on PR #${prNumber}.`);
+                }
+                continue;
+              }
+
+              if (latestReview.state !== 'APPROVED') {
+                continue;
+              }
+
+              core.info(`PR #${prNumber} is APPROVED. Checking CI status...`);
+
+              // Check if CI is passing
+              const ref = prData.data.head.sha;
+              const checks = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: ref,
+              });
+              
+              const checkRuns = checks.data.check_runs;
+              const relevantChecks = checkRuns.filter(run => {
+                const name = run.name.toLowerCase();
+                return !name.includes('handle-review') && !name.includes('auto-merge');
+              });
+              
+              if (relevantChecks.length === 0) {
+                core.info(`No checks found for PR #${prNumber}. Proceeding...`);
+              } else {
+                const allCompleted = relevantChecks.every(run => run.status === 'completed');
+                if (!allCompleted) {
+                  core.info(`PR #${prNumber} has pending checks. Waiting for check_suite event...`);
+                  continue;
+                }
+                const allSuccess = relevantChecks.every(run => ['success', 'skipped', 'neutral'].includes(run.conclusion));
+                if (!allSuccess) {
+                  core.info(`PR #${prNumber} has failing checks. Not merging.`);
+                  continue;
+                }
+                core.info(`All checks passed for PR #${prNumber}.`);
+              }
+
+              // Check for merge conflicts
+              if (prData.data.mergeable === false) {
+                core.info(`PR #${prNumber} has merge conflicts.`);
+                if (isReview) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    body: `⚠️ @${latestReview.user.login} approved, but this PR has merge conflicts. Rebase needed before merging.`,
+                  });
+                }
+                continue;
+              }
+
+              // Merge (squash for clean history)
+              try {
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  merge_method: 'squash',
+                  commit_title: `${prData.data.title} (#${prNumber})`,
+                });
+                core.info(`PR #${prNumber} merged.`);
+
+                // Delete the feature branch
+                if (prData.data.head.ref !== 'main' && prData.data.head.ref !== 'master') {
+                  try {
+                    await github.rest.git.deleteRef({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      ref: `heads/${prData.data.head.ref}`,
+                    });
+                    core.info(`Branch ${prData.data.head.ref} deleted.`);
+                  } catch (e) {
+                    core.warning(`Could not delete branch ${prData.data.head.ref}: ${e.message}`);
+                  }
+                }
+              } catch (e) {
+                core.setFailed(`Failed to merge PR #${prNumber}: ${e.message}`);
+              }
+            }

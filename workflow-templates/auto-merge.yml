@@ -6,6 +6,6 @@ on:
     types: [completed]
 jobs:
   call-auto-merge:
-    uses: appbrewingcompany/agent-marketplace/.github/workflows/auto-merge.yml@main
+    uses: appbrewingcompany/.github/.github/workflows/auto-merge.yml@main
     secrets:
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
