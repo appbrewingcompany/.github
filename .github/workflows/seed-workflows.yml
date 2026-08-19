@@ -19,38 +19,40 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           INPUT_REPO: ${{ inputs.target_repo }}
-          EVENT_REPO: ${{ github.event.repository.full_name }}
-          EVENT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
+          shopt -s nullglob
 
-          # 1. Resolve repository name and default branch depending on trigger type
-          if [ -n "${INPUT_REPO}" ]; then
-            # Manual workflow_dispatch trigger
-            if [[ "${INPUT_REPO}" == *"/"* ]]; then
-              TARGET_REPO="${INPUT_REPO}"
-            else
-              TARGET_REPO="${{ github.repository_owner }}/${INPUT_REPO}"
-            fi
-
-            echo "Resolving repository details for ${TARGET_REPO}..."
-            DEFAULT_BRANCH=$(gh repo view "${TARGET_REPO}" --json defaultBranchRef --jq '.defaultBranchRef.name')
+          # 1. Normalize target repository name
+          if [[ "${INPUT_REPO}" == *"/"* ]]; then
+            TARGET_REPO="${INPUT_REPO}"
           else
-            # Automatic repository.created trigger
-            TARGET_REPO="${EVENT_REPO}"
-            DEFAULT_BRANCH="${EVENT_DEFAULT_BRANCH}"
+            TARGET_REPO="${{ github.repository_owner }}/${INPUT_REPO}"
           fi
 
+          echo "Resolving repository details for ${TARGET_REPO}..."
+          DEFAULT_BRANCH=$(gh repo view "${TARGET_REPO}" --json defaultBranchRef --jq '.defaultBranchRef.name')
           echo "Target repo: ${TARGET_REPO}"
           echo "Default branch: ${DEFAULT_BRANCH}"
 
-          # 2. Stage and substitute templates
+          # 2. Locate the root-level template directory
+          TEMPLATE_DIR=""
+          if [ -d "workflow-templates" ]; then
+            TEMPLATE_DIR="workflow-templates"
+          else
+            echo "Error: Directory 'workflow-templates' not found at repository root."
+            ls -la
+            exit 1
+          fi
+
+          echo "Using template directory: ${TEMPLATE_DIR}"
+
+          # 3. Stage and substitute templates
           OUT_DIR=$(mktemp -d)
           mkdir -p "${OUT_DIR}/.github/workflows"
           FOUND_FILES=0
 
-          for template in .github/workflow-templates/*.{yml,yaml}; do
-            [ -e "$template" ] || continue
+          for template in "${TEMPLATE_DIR}"/*.yml "${TEMPLATE_DIR}"/*.yaml; do
             filename=$(basename "$template")
             echo "Transforming $filename..."
 
@@ -59,11 +61,12 @@ jobs:
           done
 
           if [ "$FOUND_FILES" -eq 0 ]; then
-            echo "No workflow template files found in .github/workflow-templates/. Exiting."
-            exit 0
+            echo "No .yml or .yaml files found in ${TEMPLATE_DIR}."
+            ls -la "${TEMPLATE_DIR}"
+            exit 1
           fi
 
-          # 3. Clone target repo, commit, and open PR
+          # 4. Clone target repo, commit, and open PR
           CLONE_DIR=$(mktemp -d)
           gh repo clone "${TARGET_REPO}" "${CLONE_DIR}" -- --depth 1
 
@@ -87,7 +90,7 @@ jobs:
           git commit -m "ci: add standard workflow templates from .github"
           git push origin "${BRANCH_NAME}" --force
 
-          # 4. Check for existing PR or create a new one
+          # 5. Check for existing PR or create a new one
           EXISTING_PR=$(gh pr list --repo "${TARGET_REPO}" --head "${BRANCH_NAME}" --json number --jq '.[0].number')
 
           if [ -n "${EXISTING_PR}" ]; then
