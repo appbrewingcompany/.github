@@ -7,6 +7,5 @@ jobs:
     uses: appbrewingcompany/.github/.github/workflows/auto-assign-reviewer.yml@main
     permissions:
       pull-requests: write
+      issues: write
       contents: read
-    secrets:
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
