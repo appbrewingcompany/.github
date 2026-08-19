@@ -71,14 +71,16 @@ jobs:
           gh repo clone "${TARGET_REPO}" "${CLONE_DIR}" -- --depth 1
 
           cd "${CLONE_DIR}"
-          BRANCH_NAME="automation/seed-workflows"
 
+          # Configure git authentication and credentials using gh
+          gh auth setup-git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH_NAME="automation/seed-workflows"
           git checkout -B "${BRANCH_NAME}"
           mkdir -p .github/workflows
           cp -r "${OUT_DIR}/.github/workflows/"* .github/workflows/
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add .github/workflows
 
@@ -89,7 +91,6 @@ jobs:
 
           git commit -m "ci: add standard workflow templates from .github"
           git push origin "${BRANCH_NAME}" --force
-
           # 5. Check for existing PR or create a new one
           EXISTING_PR=$(gh pr list --repo "${TARGET_REPO}" --head "${BRANCH_NAME}" --json number --jq '.[0].number')
 
