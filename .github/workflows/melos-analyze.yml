@@ -49,6 +49,17 @@ jobs:
 
       - uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
 
+      - name: Install Realm native dependencies
+        # realm_dart needs its native library next to the Dart SDK before
+        # tests can run (dart test loads it via FFI). No-op in repos where no
+        # package depends on realm_dart.
+        run: |
+          if melos list --depends-on="realm_dart" 2>/dev/null | grep -q .; then
+            melos exec --depends-on="realm_dart" -- "dart run realm_dart install"
+          else
+            echo "No realm_dart dependents; skipping."
+          fi
+
       - name: Analyze code
         run: melos analyze
 
