@@ -21,7 +21,7 @@ env:
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     env:
       GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/service-account.json
     steps:
