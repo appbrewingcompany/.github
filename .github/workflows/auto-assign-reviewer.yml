@@ -15,7 +15,7 @@ jobs:
         
       - name: Assign Default Reviewer and PR Author
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_AUTHOR: ${{ github.actor }}
         run: |
