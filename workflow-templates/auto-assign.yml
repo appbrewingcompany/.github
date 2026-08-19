@@ -8,3 +8,5 @@ jobs:
     permissions:
       pull-requests: write
       contents: read
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
