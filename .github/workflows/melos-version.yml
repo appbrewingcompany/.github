@@ -3,16 +3,6 @@ name: Version and Release
 on:
   workflow_call:
     inputs:
-      include-private:
-        description: 'Include packages with `publish_to: none` when versioning.'
-        type: boolean
-        default: true
-      tag:
-        description: >-
-          Let melos create git tags for the new versions (pushed together with
-          the version commit). Set to false to version without tagging.
-        type: boolean
-        default: true
       git-name:
         description: Git author name for the version commit and tags.
         type: string
@@ -62,30 +52,12 @@ jobs:
 
       - name: Install Melos
         uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
-
-      - name: Setup FVM symlink for Melos
-        run: |
-          mkdir -p .fvm
-          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
-
-      - name: Bootstrap Melos
-        run: melos bootstrap
-
-      # Explicit `melos version` step: the melos-action's `run-versioning`
-      # hardcodes `--no-git-tag-version`, so releases were committed but never
-      # tagged. Tags are required for tag_pattern-based git dependencies
-      # (<package>-v<version>). Notes: only changelog files are excluded from
-      # melos' package diff, and `chore:`-type commits never trigger a version
-      # bump — use `fix:`/`feat:` for release-worthy changes.
-      - name: Version Packages
-        # NB: --all is the flag for including private (publish_to: none)
-        # packages in versioning; --private is only a package filter. And
-        # GitHub expressions treat '' as falsy, so never write
-        # `X && '' || Y` — it always yields Y.
-        run: >-
-          melos version --yes
-          ${{ inputs.include-private && '--all' || '' }}
-          ${{ inputs.tag == false && '--no-git-tag-version' || '' }}
+        with:
+          run-versioning: true
+          include-private: true
+          tag: true
+          git-name: ${{ inputs.git-name }}
+          git-email: ${{ inputs.git-email }}
 
       - name: Push Version Commit & Tags
         run: git push --follow-tags
