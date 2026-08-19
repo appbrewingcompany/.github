@@ -1,0 +1,7 @@
+{
+  "tool_name": "Write",
+  "tool_input_preview": "{\"file_path\":\"/Users/Cyril/Developer/appbrewingcompany/dot_github/.worktrees/fix-melos-version/.github/workflows/melos-version.yml\",\"content\":\"name: Version and Release\\n\\non:\\n  workflow_call:\\n    i...",
+  "error": "File has not been read yet. Read it first before writing to it.",
+  "timestamp": "2026-08-19T21:14:32.750Z",
+  "retry_count": 1
+}

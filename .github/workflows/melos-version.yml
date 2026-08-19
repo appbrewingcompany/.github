@@ -2,6 +2,25 @@ name: Version and Release
 
 on:
   workflow_call:
+    inputs:
+      include-private:
+        description: 'Include packages with `publish_to: none` when versioning.'
+        type: boolean
+        default: true
+      tag:
+        description: >-
+          Let melos create git tags for the new versions (pushed together with
+          the version commit). Set to false to version without tagging.
+        type: boolean
+        default: true
+      git-name:
+        description: Git author name for the version commit and tags.
+        type: string
+        default: github-actions[bot]
+      git-email:
+        description: Git author email for the version commit and tags.
+        type: string
+        default: 41898282+github-actions[bot]@users.noreply.github.com
     secrets:
       PAT_TOKEN:
         required: true
@@ -23,8 +42,8 @@ jobs:
     steps:
       - name: Setup Git User & Auth
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "${{ inputs.git-name }}"
+          git config --global user.email "${{ inputs.git-email }}"
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
@@ -43,8 +62,26 @@ jobs:
 
       - name: Install Melos
         uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
-        with:
-          run-versioning: true
+
+      - name: Setup FVM symlink for Melos
+        run: |
+          mkdir -p .fvm
+          ln -s $FLUTTER_ROOT .fvm/flutter_sdk
+
+      - name: Bootstrap Melos
+        run: melos bootstrap
+
+      # Explicit `melos version` step: the melos-action's `run-versioning`
+      # hardcodes `--no-git-tag-version`, so releases were committed but never
+      # tagged. Tags are required for tag_pattern-based git dependencies
+      # (<package>-v<version>). Notes: only changelog files are excluded from
+      # melos' package diff, and `chore:`-type commits never trigger a version
+      # bump — use `fix:`/`feat:` for release-worthy changes.
+      - name: Version Packages
+        run: >-
+          melos version --yes
+          ${{ inputs.include-private && '--private' || '' }}
+          ${{ inputs.tag && '' || '--no-git-tag-version' }}
 
       - name: Push Version Commit & Tags
         run: git push --follow-tags
