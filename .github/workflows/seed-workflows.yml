@@ -1,0 +1,102 @@
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: "Target repository name"
+        required: true
+        type: string
+  repository_dispatch:
+    types: [repo-created]
+
+jobs:
+  seed-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout .github repo
+        uses: actions/checkout@v4
+
+      - name: Process templates and open Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
+          INPUT_REPO: ${{ inputs.target_repo }}
+          EVENT_REPO: ${{ github.event.repository.full_name }}
+          EVENT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          # 1. Resolve repository name and default branch depending on trigger type
+          if [ -n "${INPUT_REPO}" ]; then
+            # Manual workflow_dispatch trigger
+            if [[ "${INPUT_REPO}" == *"/"* ]]; then
+              TARGET_REPO="${INPUT_REPO}"
+            else
+              TARGET_REPO="${{ github.repository_owner }}/${INPUT_REPO}"
+            fi
+
+            echo "Resolving repository details for ${TARGET_REPO}..."
+            DEFAULT_BRANCH=$(gh repo view "${TARGET_REPO}" --json defaultBranchRef --jq '.defaultBranchRef.name')
+          else
+            # Automatic repository.created trigger
+            TARGET_REPO="${EVENT_REPO}"
+            DEFAULT_BRANCH="${EVENT_DEFAULT_BRANCH}"
+          fi
+
+          echo "Target repo: ${TARGET_REPO}"
+          echo "Default branch: ${DEFAULT_BRANCH}"
+
+          # 2. Stage and substitute templates
+          OUT_DIR=$(mktemp -d)
+          mkdir -p "${OUT_DIR}/.github/workflows"
+          FOUND_FILES=0
+
+          for template in .github/workflow-templates/*.{yml,yaml}; do
+            [ -e "$template" ] || continue
+            filename=$(basename "$template")
+            echo "Transforming $filename..."
+
+            sed -E "s/\\\$default[-_]branch/${DEFAULT_BRANCH}/g" "$template" > "${OUT_DIR}/.github/workflows/${filename}"
+            FOUND_FILES=1
+          done
+
+          if [ "$FOUND_FILES" -eq 0 ]; then
+            echo "No workflow template files found in .github/workflow-templates/. Exiting."
+            exit 0
+          fi
+
+          # 3. Clone target repo, commit, and open PR
+          CLONE_DIR=$(mktemp -d)
+          gh repo clone "${TARGET_REPO}" "${CLONE_DIR}" -- --depth 1
+
+          cd "${CLONE_DIR}"
+          BRANCH_NAME="automation/seed-workflows"
+
+          git checkout -B "${BRANCH_NAME}"
+          mkdir -p .github/workflows
+          cp -r "${OUT_DIR}/.github/workflows/"* .github/workflows/
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add .github/workflows
+
+          if git diff --staged --quiet; then
+            echo "Workflows are already up to date. No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "ci: add standard workflow templates from .github"
+          git push origin "${BRANCH_NAME}" --force
+
+          # 4. Check for existing PR or create a new one
+          EXISTING_PR=$(gh pr list --repo "${TARGET_REPO}" --head "${BRANCH_NAME}" --json number --jq '.[0].number')
+
+          if [ -n "${EXISTING_PR}" ]; then
+            echo "Pull Request #${EXISTING_PR} already exists in ${TARGET_REPO}."
+          else
+            gh pr create \
+              --repo "${TARGET_REPO}" \
+              --base "${DEFAULT_BRANCH}" \
+              --head "${BRANCH_NAME}" \
+              --title "ci: install organization workflow templates" \
+              --body "Automated Pull Request adding standard CI/CD workflow templates configured for the \`${DEFAULT_BRANCH}\` branch."
+          fi
