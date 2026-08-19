@@ -78,10 +78,14 @@ jobs:
       # melos' package diff, and `chore:`-type commits never trigger a version
       # bump — use `fix:`/`feat:` for release-worthy changes.
       - name: Version Packages
+        # NB: --all is the flag for including private (publish_to: none)
+        # packages in versioning; --private is only a package filter. And
+        # GitHub expressions treat '' as falsy, so never write
+        # `X && '' || Y` — it always yields Y.
         run: >-
           melos version --yes
-          ${{ inputs.include-private && '--private' || '' }}
-          ${{ inputs.tag && '' || '--no-git-tag-version' }}
+          ${{ inputs.include-private && '--all' || '' }}
+          ${{ inputs.tag == false && '--no-git-tag-version' || '' }}
 
       - name: Push Version Commit & Tags
         run: git push --follow-tags
