@@ -1,11 +1,11 @@
 name: Version and Release
 on:
   push:
-    branches:
-      - main
-      - main
+    branches: [ $default-branch ]
 jobs:
   call-melos-version:
     uses: appbrewingcompany/.github/.github/workflows/melos-version.yml@main
+    permissions:
+      contents: write
     secrets:
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
