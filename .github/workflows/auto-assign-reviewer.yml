@@ -2,7 +2,9 @@ name: Auto Assign Reviewer and Assignee (Reusable)
 
 on:
   workflow_call:
-    # No inputs needed, we pull everything from github.event and CODEOWNERS
+    secrets:
+      PAT_TOKEN:
+        required: true
 
 jobs:
   assign:
