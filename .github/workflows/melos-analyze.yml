@@ -34,14 +34,16 @@ jobs:
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
 
-      - name: Copy service-account.json
-        if: env.SERVICE_ACCOUNT_JSON != ''
-        run: echo "$SERVICE_ACCOUNT_JSON" > "$GOOGLE_APPLICATION_CREDENTIALS"
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
+
+      # Must run AFTER checkout: actions/checkout deletes pre-existing
+      # untracked files in the workspace, so a pre-checkout copy is wiped.
+      - name: Copy service-account.json
+        if: env.SERVICE_ACCOUNT_JSON != ''
+        run: echo "$SERVICE_ACCOUNT_JSON" > "$GOOGLE_APPLICATION_CREDENTIALS"
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
