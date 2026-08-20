@@ -7,6 +7,10 @@ on:
         description: "Target repository name"
         required: true
         type: string
+      creator:
+        description: "Username to add to CODEOWNERS (defaults to first committer)"
+        required: false
+        type: string
   repository_dispatch:
     types: [repo-created]
 
@@ -17,10 +21,12 @@ jobs:
       - name: Checkout .github repo
         uses: actions/checkout@v7
 
-      - name: Process templates and open Pull Request
+      - name: Process templates, bootstrap repo, and open Pull Request
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-          INPUT_REPO: ${{ inputs.target_repo }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          INPUT_REPO: ${{ inputs.target_repo || github.event.client_payload.repo }}
+          INPUT_CREATOR: ${{ inputs.creator || github.event.client_payload.creator }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -68,7 +74,23 @@ jobs:
             exit 1
           fi
 
-          # 4. Clone target repo, commit, and open PR
+          # 4. Bootstrap: repo settings + PAT_TOKEN secret (before PR, works on empty repos too)
+          echo "Applying standard repo settings..."
+          gh api -X PATCH "repos/${TARGET_REPO}" \
+            -f delete_branch_on_merge=true -F allow_update_branch=true > /dev/null
+
+          echo "Copying PAT_TOKEN secret to ${TARGET_REPO}..."
+          gh secret set PAT_TOKEN --repo "${TARGET_REPO}" --body "${PAT_TOKEN}"
+
+          # 5. Determine creator for CODEOWNERS
+          CREATOR="${INPUT_CREATOR}"
+          if [ -z "${CREATOR}" ]; then
+            CREATOR=$(gh api "repos/${TARGET_REPO}/commits?per_page=1" \
+              --jq '.[0].committer.login // .[0].author.login // empty' || true)
+          fi
+          echo "CODEOWNERS creator: ${CREATOR:-unknown}"
+
+          # 6. Clone target repo, commit workflows + CODEOWNERS, and open PR
           CLONE_DIR=$(mktemp -d)
           gh repo clone "${TARGET_REPO}" "${CLONE_DIR}" -- --depth 1
 
@@ -84,16 +106,40 @@ jobs:
           mkdir -p .github/workflows
           cp -r "${OUT_DIR}/.github/workflows/"* .github/workflows/
 
-          git add .github/workflows
+          # CODEOWNERS: creator first, default reviewer alongside
+          if [ -n "${CREATOR}" ] && [ "${CREATOR}" != "web-flow" ] && [ "${CREATOR}" != "github-actions[bot]" ]; then
+            mkdir -p .github
+            if [ -f .github/CODEOWNERS ]; then
+              grep -qE "^\* .*@${CREATOR}\b" .github/CODEOWNERS || \
+                sed -i -E "0,/^\\* /s/^\\* (.*)$/* @${CREATOR} \1/" .github/CODEOWNERS
+            else
+              echo "* @${CREATOR} @ubergaijin" > .github/CODEOWNERS
+            fi
+          fi
 
+          # 6b. Rename template placeholders to the new repo name
+          #     (repos created from our template_* repos keep the template
+          #     package name; rewrite it everywhere it appears)
+          REPO_NAME="${TARGET_REPO##*/}"
+          for T in template_dart_package template_flutter_package template_flutter_plugin template_flutter_app; do
+            if grep -rq --exclude-dir=.git --exclude-dir=.dart_tool --exclude-dir=build "$T" .; then
+              echo "Renaming template placeholder $T -> $REPO_NAME"
+              grep -rl --exclude-dir=.git --exclude-dir=.dart_tool --exclude-dir=build "$T" . |
+                xargs -r sed -i "s/$T/$REPO_NAME/g"
+              break
+            fi
+          done
+
+          git add -A
+          git add .github
           if git diff --staged --quiet; then
-            echo "Workflows are already up to date. No changes to commit."
+            echo "Bootstrap already up to date. No changes to commit."
             exit 0
           fi
 
           git commit -m "ci: add standard workflow templates from .github"
           git push origin "${BRANCH_NAME}" --force
-          # 5. Check for existing PR or create a new one
+          # 7. Check for existing PR or create a new one
           EXISTING_PR=$(gh pr list --repo "${TARGET_REPO}" --head "${BRANCH_NAME}" --json number --jq '.[0].number')
 
           if [ -n "${EXISTING_PR}" ]; then
@@ -104,5 +150,7 @@ jobs:
               --base "${DEFAULT_BRANCH}" \
               --head "${BRANCH_NAME}" \
               --title "ci: install organization workflow templates" \
-              --body "Automated Pull Request adding standard CI/CD workflow templates configured for the \`${DEFAULT_BRANCH}\` branch."
+              --body "Automated Pull Request adding standard CI/CD workflow templates configured for the \`${DEFAULT_BRANCH}\` branch.
+
+          Bootstrapped by the repo-created automation: workflow templates, CODEOWNERS, \`PAT_TOKEN\` secret, and standard repo settings (delete-branch-on-merge, update-branch)."
           fi
