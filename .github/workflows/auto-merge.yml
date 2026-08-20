@@ -20,10 +20,12 @@ on:
 permissions:
   pull-requests: write
   contents: write
+  checks: read
 
 jobs:
   handle-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Only act on reviews from humans, never from the bot itself
     if: github.event.review.user.login != 'appbrew-agent'
     steps:
@@ -145,8 +147,20 @@ jobs:
                 core.info(`All checks passed for PR #${prNumber}.`);
               }
 
-              // Check for merge conflicts
-              if (prData.data.mergeable === false) {
+              // Wait for GitHub to compute mergeability (can be null on fresh pushes)
+              let mergeableState = prData.data.mergeable;
+              for (let attempt = 0; attempt < 3 && mergeableState === null; attempt++) {
+                core.info(`Mergeability unknown for PR #${prNumber}, retrying in 3s (attempt ${attempt + 1}/3)...`);
+                await new Promise(r => setTimeout(r, 3000));
+                const refetch = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                });
+                mergeableState = refetch.data.mergeable;
+              }
+
+              if (mergeableState === false) {
                 core.info(`PR #${prNumber} has merge conflicts.`);
                 if (isReview) {
                   await github.rest.issues.createComment({
@@ -156,6 +170,11 @@ jobs:
                     body: `⚠️ @${latestReview.user.login} approved, but this PR has merge conflicts. Rebase needed before merging.`,
                   });
                 }
+                continue;
+              }
+
+              if (mergeableState === null) {
+                core.warning(`Could not determine mergeability for PR #${prNumber} after retries. Skipping.`);
                 continue;
               }
 
