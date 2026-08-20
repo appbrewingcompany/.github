@@ -5,6 +5,8 @@ on:
 jobs:
   call-melos-analyze:
     uses: appbrewingcompany/.github/.github/workflows/melos-analyze.yml@main
+    permissions:
+      contents: read
     secrets:
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
       SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
