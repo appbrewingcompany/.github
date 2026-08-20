@@ -50,14 +50,11 @@ jobs:
           flutter-version-file: .fvmrc
           cache: true
 
-      - name: Install Melos
+      - name: Install Melos & Bootstrap
         uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
-        with:
-          run-versioning: true
-          include-private: true
-          tag: true
-          git-name: ${{ inputs.git-name }}
-          git-email: ${{ inputs.git-email }}
 
-      - name: Push Version Commit & Tags
+      - name: Version packages (including private)
+        run: melos version --yes --all
+
+      - name: Push version commit & tags
         run: git push --follow-tags
