@@ -180,12 +180,15 @@ jobs:
 
               // Merge (squash for clean history)
               try {
+                // Short merge title: "Merge PR #N from branch" (branch without
+                // any fork-owner prefix) instead of the PR title.
+                const branchName = prData.data.head.ref.replace(/^.*:/, '');
                 await github.rest.pulls.merge({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: prNumber,
                   merge_method: 'squash',
-                  commit_title: `${prData.data.title} (#${prNumber})`,
+                  commit_title: `Merge PR #${prNumber} from ${branchName}`,
                 });
                 core.info(`PR #${prNumber} merged.`);
 
