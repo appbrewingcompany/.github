@@ -28,7 +28,7 @@ jobs:
       # NOT visible to that step's own `if:` condition).
       SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
     steps:
-      - uses: ./.github/actions/melos-setup
+      - uses: appbrewingcompany/.github/.github/actions/melos-setup@main
         with:
           pat-token: ${{ secrets.PAT_TOKEN }}
 
