@@ -1,0 +1,48 @@
+name: Melos Setup
+description: >
+  Shared setup for Melos reusable workflows: git auth (PAT + identity), pinned
+  full-history checkout, Flutter from .fvmrc, and melos bootstrap via
+  melos-action. Lives here so melos-analyze.yml and melos-version.yml don't
+  drift apart on action pins or auth setup.
+
+inputs:
+  pat-token:
+    description: GitHub token used for checkout and private org dependency access.
+    required: true
+  git-name:
+    description: Git author name for commits made by this workflow (empty = don't set identity).
+    required: false
+    default: ''
+  git-email:
+    description: Git author email for commits made by this workflow (empty = don't set identity).
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    # Auth goes BEFORE checkout so private org dependencies resolve later, and
+    # because actions/checkout wipes untracked files, invalidating anything
+    # written earlier into the workspace.
+    - name: Configure git auth
+      shell: bash
+      run: |
+        git config --global url."https://github.com/".insteadOf "git@github.com:"
+        git config --global credential.helper store
+        echo "https://x-access-token:${{ inputs.pat-token }}@github.com" > ~/.git-credentials
+        if [ -n "${{ inputs.git-name }}" ] && [ -n "${{ inputs.git-email }}" ]; then
+          git config --global user.name "${{ inputs.git-name }}"
+          git config --global user.email "${{ inputs.git-email }}"
+        fi
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        token: ${{ inputs.pat-token }}
+        fetch-depth: 0
+
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        flutter-version-file: .fvmrc
+        cache: true
+
+    - uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0

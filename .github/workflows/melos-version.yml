@@ -30,28 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Setup Git User & Auth
-        run: |
-          git config --global user.name "${{ inputs.git-name }}"
-          git config --global user.email "${{ inputs.git-email }}"
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com" > ~/.git-credentials
-
-      - name: Checkout Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: appbrewingcompany/.github/.github/actions/melos-setup@main
         with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
-        with:
-          flutter-version-file: .fvmrc
-          cache: true
-
-      - name: Install Melos & Bootstrap
-        uses: bluefireteam/melos-action@2982f8e4fc92440a219490009d6d05195cb1a6a5 # v3.8.0
+          pat-token: ${{ secrets.PAT_TOKEN }}
+          git-name: ${{ inputs.git-name }}
+          git-email: ${{ inputs.git-email }}
 
       - name: Version packages (including private)
         run: melos version --yes --all
