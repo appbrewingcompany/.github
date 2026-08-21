@@ -1,1 +1,3 @@
-* @appbrew-agent @ubergaijin
+# CODEOWNERS: humans only — never list bot/app accounts (they trigger
+# review_requested webhooks that wake the Hermes agent on every PR).
+* @ubergaijin

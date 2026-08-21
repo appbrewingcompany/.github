@@ -106,8 +106,13 @@ jobs:
           mkdir -p .github/workflows
           cp -r "${OUT_DIR}/.github/workflows/"* .github/workflows/
 
-          # CODEOWNERS: creator first, default reviewer alongside
-          if [ -n "${CREATOR}" ] && [ "${CREATOR}" != "web-flow" ] && [ "${CREATOR}" != "github-actions[bot]" ]; then
+          # CODEOWNERS: creator first, default reviewer alongside.
+          # Humans only — bot owners (e.g. appbrew-agent) would be
+          # auto-requested as reviewer on every PR, waking the Hermes agent.
+          case "${CREATOR}" in
+            ""|web-flow|github-actions[bot]|*\[bot\]|appbrew-agent) CREATOR="";;
+          esac
+          if [ -n "${CREATOR}" ]; then
             mkdir -p .github
             if [ -f .github/CODEOWNERS ]; then
               grep -qE "^\* .*@${CREATOR}\b" .github/CODEOWNERS || \
