@@ -106,6 +106,14 @@ jobs:
           mkdir -p .github/workflows
           cp -r "${OUT_DIR}/.github/workflows/"* .github/workflows/
 
+          # Composite actions shared by the reusable Melos workflows. They must
+          # live in the consumer repo: a local `./.github/actions/...` reference
+          # inside a remotely-called reusable workflow resolves against the
+          # caller's repository, not this one.
+          SEED_ROOT="${{ github.workspace }}"
+          mkdir -p .github/actions
+          cp -r "${SEED_ROOT}/.github/actions/"* .github/actions/
+
           # CODEOWNERS: creator first, default reviewer alongside
           if [ -n "${CREATOR}" ] && [ "${CREATOR}" != "web-flow" ] && [ "${CREATOR}" != "github-actions[bot]" ]; then
             mkdir -p .github
