@@ -1,15 +1,4 @@
-# Review Workflow — the enforcement layer for free-plan private repos.
-#
-# Replaces both the old pr-gatekeeper.yml and the basic auto-merge.yml.
-# Implements the full review lifecycle:
-#   1. ubergaijin APPROVES a PR → auto-merge (squash) to main + delete branch
-#   2. ubergaijin CHANGES_REQUESTED or COMMENTED → notify @appbrew-agent with feedback
-#   3. appbrew-agent reviews are ignored (bot can't self-approve)
-#   4. Merge conflicts → comment on PR instead of silent failure
-#
-# This replaces what Team plan's "required reviewers" + "auto-merge" would do natively.
-
-name: Review Workflow
+name: Auto Merge Approved PR
 
 on:
   workflow_call:
@@ -23,8 +12,8 @@ permissions:
   checks: read
 
 jobs:
-  handle-review:
-    runs-on: ubuntu-latest
+  check-review:
+    runs-on: self-hosted
     timeout-minutes: 10
     # Only act on reviews from humans, never from the bot itself
     if: github.event.review.user.login != 'appbrew-agent'

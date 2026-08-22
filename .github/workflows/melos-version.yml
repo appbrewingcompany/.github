@@ -1,4 +1,4 @@
-name: Version and Release
+name: Melos Version and Release
 
 on:
   workflow_call:
@@ -27,7 +27,7 @@ env:
 
 jobs:
   version:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - uses: appbrewingcompany/.github/.github/actions/melos-setup@main

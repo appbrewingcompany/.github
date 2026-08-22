@@ -1,5 +1,5 @@
 {
-  "name": "Melos Analyze Workflow",
+  "name": "Melos Analyze and Test Workflow",
   "description": "Run Melos bootstrap, analyze, and test on PRs.",
   "iconName": "dart",
   "categories": [

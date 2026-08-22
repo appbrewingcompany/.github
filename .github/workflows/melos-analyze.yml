@@ -1,4 +1,4 @@
-name: Melos Analyze
+name: Melos Analyze and Test
 
 on:
   workflow_call:
@@ -20,7 +20,7 @@ env:
 
 jobs:
   analyze-and-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 60
     env:
       GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/service-account.json
@@ -38,24 +38,13 @@ jobs:
         if: env.SERVICE_ACCOUNT_JSON != ''
         run: echo "$SERVICE_ACCOUNT_JSON" > "$GOOGLE_APPLICATION_CREDENTIALS"
 
-      - name: Install Realm native dependencies
-        # realm_dart needs its native library next to the Dart SDK before
-        # tests can run (dart test loads it via FFI). No-op in repos where no
-        # package depends on realm_dart.
-        run: |
-          if melos list --depends-on="realm_dart" 2>/dev/null | grep -q .; then
-            melos exec --depends-on="realm_dart" -- "dart run realm_dart install"
-          else
-            echo "No realm_dart dependents; skipping."
-          fi
-
       - name: Analyze code
         run: melos analyze
 
       - name: Run tests
         run: |
           if melos run --list | awk '{print $1}' | grep -q "^test$"; then
-            melos run test
+            melos test --no-select
           else
             echo "No test script found in Melos config. Skipping tests."
           fi

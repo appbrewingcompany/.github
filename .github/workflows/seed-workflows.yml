@@ -16,7 +16,7 @@ on:
 
 jobs:
   seed-workflows:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout .github repo
         uses: actions/checkout@v7

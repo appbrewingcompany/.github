@@ -1,6 +1,4 @@
-# .github
-
-Organization-level configuration for **App Brewing Company**.
+# Organization-level configuration for App Brewing Company
 
 This repository holds org-wide defaults and shared automation for our GitHub
 organization: reusable workflow templates, org-wide community health files,

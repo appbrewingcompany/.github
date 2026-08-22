@@ -1,4 +1,4 @@
-name: Local Auto Merge
+name: Auto Merge PR
 on:
   pull_request_review:
     types: [submitted]

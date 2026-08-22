@@ -1,6 +1,6 @@
 {
   "name": "Auto Assign Workflow",
-  "description": "Automatically assign the reviewer and owner of PRs.",
+  "description": "Automatically assign the reviewer of PRs.",
   "iconName": "github",
   "categories": [
     "automation"

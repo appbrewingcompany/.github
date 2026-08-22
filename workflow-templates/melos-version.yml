@@ -1,4 +1,4 @@
-name: Version and Release
+name: Melos Version and Release
 on:
   push:
     branches: [ $default-branch ]

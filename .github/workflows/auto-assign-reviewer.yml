@@ -1,11 +1,11 @@
-name: Auto Assign Reviewer (Reusable)
+name: Auto Assign Reviewer
 
 on:
   workflow_call:
 
 jobs:
-  assign:
-    runs-on: ubuntu-latest
+  assign-reviewer:
+    runs-on: self-hosted
 
     # Prevent duplicate runs for the same PR
     concurrency:

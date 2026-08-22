@@ -3,7 +3,7 @@ on:
   pull_request:
     types: [opened, ready_for_review]
 jobs:
-  call-assign-workflow:
+  call-auto-assign:
     uses: appbrewingcompany/.github/.github/workflows/auto-assign-reviewer.yml@main
     permissions:
       pull-requests: write
