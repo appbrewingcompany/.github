@@ -1,0 +1,16 @@
+# Node/JS repo verification: lint/typecheck/test/build (each skipped when the
+# repo has no such npm script). Pair with the auto-merge caller by setting:
+#   required-checks: Node Verify
+name: Node Verify
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  call-node-verify:
+    uses: appbrewingcompany/.github-private/.github/workflows/node-verify.yml@main
+    with:
+      # $default-runner: substituted by the seeder (self-hosted for private
+      # repos, ubuntu-latest for public repos).
+      runner: $default-runner
+    permissions:
+      contents: read

@@ -1,0 +1,8 @@
+{
+  "name": "Melos Version Workflow",
+  "description": "Run Melos version and push release tags on merge. Callable from private org repositories only.",
+  "iconName": "dart",
+  "categories": [
+    "continuous integration"
+  ]
+}

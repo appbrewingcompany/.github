@@ -1,0 +1,37 @@
+# Auto-merge thin caller. For repos with product CI, set required-checks to
+# the exact check name that must pass before merging, e.g.:
+#   with:
+#     required-checks: Melos Analyze and Test
+# Repos without product CI leave it empty: the human allowlist approval is
+# the merge gate (bots can never approve).
+#
+# workflow_dispatch ("Run workflow" in the Actions tab) with a PR number
+# re-evaluates that PR — the escape hatch for green re-runs, which GitHub
+# does not emit check_suite events for.
+name: Auto Merge PR
+on:
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: PR number to re-evaluate (checks + approval gates still apply).
+        type: string
+        required: true
+jobs:
+  call-auto-merge:
+    uses: appbrewingcompany/.github-private/.github/workflows/auto-merge.yml@main
+    with:
+      pr-number: ${{ inputs.pr-number || '' }}
+      # $default-runner: substituted by the seeder (self-hosted for private
+      # repos, ubuntu-latest for public repos).
+      runner: $default-runner
+    permissions:
+      pull-requests: write
+      contents: write
+      checks: read
+    secrets:
+      MERGE_APP_CLIENT_ID: ${{ secrets.MERGE_APP_CLIENT_ID }}
+      MERGE_APP_PRIVATE_KEY: ${{ secrets.MERGE_APP_PRIVATE_KEY }}

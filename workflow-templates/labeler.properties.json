@@ -1,0 +1,8 @@
+{
+  "name": "Labeler",
+  "description": "Automatically label pull requests via the shared reusable workflow. Callable from private org repositories only.",
+  "iconName": "github",
+  "categories": [
+    "automation"
+  ]
+}

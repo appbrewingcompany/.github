@@ -1,0 +1,33 @@
+name: Agent task / maintenance
+description: Work item for an AI agent or routine maintenance.
+labels: ["agent-task"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Requested outcome
+      description: The end state that counts as done.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Budget, scope limits, repos/services involved, things not to touch.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance checks
+      description: Commands or observations that verify the outcome.
+  - type: input
+    id: repos
+    attributes:
+      label: Affected repositories
+  - type: dropdown
+    id: approval
+    attributes:
+      label: Human approval required before release/merge?
+      options:
+        - "Yes — wait for owner review"
+        - "No — routine maintenance"
+      default: 0

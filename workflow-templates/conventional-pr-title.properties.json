@@ -1,0 +1,8 @@
+{
+  "name": "Conventional PR Title",
+  "description": "Enforce conventional-commit style PR titles. Callable from private org repositories only.",
+  "iconName": "github",
+  "categories": [
+    "automation"
+  ]
+}

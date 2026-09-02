@@ -1,0 +1,15 @@
+name: Auto Assign PR Reviewer
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+jobs:
+  call-auto-assign:
+    uses: appbrewingcompany/.github-private/.github/workflows/auto-assign-reviewer.yml@main
+    with:
+      # $default-runner: substituted by the seeder (self-hosted for private
+      # repos, ubuntu-latest for public repos).
+      runner: $default-runner
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read

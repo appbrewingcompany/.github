@@ -1,0 +1,37 @@
+name: Bug / CI failure
+description: Something is broken in an app, package, or CI workflow.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Redact logs: no credentials, tokens, customer data, or exploit steps.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Expected vs actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce / minimal reproduction
+      description: Commands, URLs, or a code snippet that shows the failure.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Flutter / Dart / Node version
+      description: Output of `flutter --version` (or `node --version` for JS repos).
+  - type: input
+    id: platform
+    attributes:
+      label: Platform / device
+      description: e.g. Android 15 / iPhone 16 Pro / macOS 15 / CI runner
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted logs
+      description: Paste the failure output with secrets removed.

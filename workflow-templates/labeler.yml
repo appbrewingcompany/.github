@@ -1,0 +1,15 @@
+name: labeler
+
+on: [pull_request_target]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    # Implementation (runner choice, action version) lives in this repo's
+    # .github/workflows/labeler.yml reusable workflow.
+    uses: appbrewingcompany/.github-private/.github/workflows/labeler.yml@main
+    with:
+      runner: $default_runner

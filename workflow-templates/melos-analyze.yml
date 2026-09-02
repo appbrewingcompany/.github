@@ -1,0 +1,17 @@
+name: Melos Analyze and Test
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  call-melos-analyze:
+    uses: appbrewingcompany/.github-private/.github/workflows/melos-analyze.yml@main
+    with:
+      # $default-runner: substituted by the seeder (self-hosted for private
+      # repos, ubuntu-latest for public repos).
+      runner: $default-runner
+    permissions:
+      contents: read
+    secrets:
+      DEPS_APP_CLIENT_ID: ${{ secrets.DEPS_APP_CLIENT_ID }}
+      DEPS_APP_PRIVATE_KEY: ${{ secrets.DEPS_APP_PRIVATE_KEY }}
+      SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}

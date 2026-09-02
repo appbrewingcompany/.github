@@ -1,0 +1,16 @@
+name: Melos Version and Release
+on:
+  push:
+    branches: [ $default-branch ]
+jobs:
+  call-melos-version:
+    uses: appbrewingcompany/.github-private/.github/workflows/melos-version.yml@main
+    with:
+      # $default-runner: substituted by the seeder (self-hosted for private
+      # repos, ubuntu-latest for public repos).
+      runner: $default-runner
+    permissions:
+      contents: write
+    secrets:
+      MERGE_APP_CLIENT_ID: ${{ secrets.MERGE_APP_CLIENT_ID }}
+      MERGE_APP_PRIVATE_KEY: ${{ secrets.MERGE_APP_PRIVATE_KEY }}

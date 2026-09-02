@@ -1,0 +1,3 @@
+# CODEOWNERS: humans only — never list bot/app accounts (they trigger
+# review_requested webhooks that wake the duty agent on every PR).
+* @ubergaijin

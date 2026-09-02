@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security reports
+    url: mailto:security@appbrew.co
+    about: Vulnerabilities go to the private channel — see SECURITY.md. Never post exploit details in issues.
