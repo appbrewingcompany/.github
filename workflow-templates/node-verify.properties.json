@@ -1,0 +1,8 @@
+{
+  "name": "Node Verify",
+  "description": "Lint, typecheck, test, and build Node/JS repos (each skipped when the repo lacks the npm script). Callable from private org repositories only.",
+  "iconName": "github",
+  "categories": [
+    "continuous integration"
+  ]
+}

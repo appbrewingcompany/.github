@@ -11,6 +11,4 @@ jobs:
       runner: $default-runner
     permissions:
       contents: write
-    secrets:
-      MERGE_APP_CLIENT_ID: ${{ secrets.MERGE_APP_CLIENT_ID }}
-      MERGE_APP_PRIVATE_KEY: ${{ secrets.MERGE_APP_PRIVATE_KEY }}
+    secrets: inherit

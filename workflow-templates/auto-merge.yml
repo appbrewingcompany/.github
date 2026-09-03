@@ -32,6 +32,4 @@ jobs:
       pull-requests: write
       contents: write
       checks: read
-    secrets:
-      MERGE_APP_CLIENT_ID: ${{ secrets.MERGE_APP_CLIENT_ID }}
-      MERGE_APP_PRIVATE_KEY: ${{ secrets.MERGE_APP_PRIVATE_KEY }}
+    secrets: inherit

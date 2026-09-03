@@ -11,7 +11,4 @@ jobs:
       runner: $default-runner
     permissions:
       contents: read
-    secrets:
-      DEPS_APP_CLIENT_ID: ${{ secrets.DEPS_APP_CLIENT_ID }}
-      DEPS_APP_PRIVATE_KEY: ${{ secrets.DEPS_APP_PRIVATE_KEY }}
-      SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+    secrets: inherit
