@@ -20,9 +20,7 @@ We aim to acknowledge reports within **two business days**.
 ## Scope
 
 - Mobile apps and the packages they depend on
-- Serverless functions and cloud configuration (DigitalOcean, Cloudflare, Tencent)
-- CI/CD workflows and the self-hosted runners
-- The org's agent gateway and its webhooks
+- Org infrastructure and automation surfaces
 
 ## Safe-testing boundaries
 
