@@ -5,7 +5,9 @@
 #   1. set the repo secret  ZAI_API_KEY  (z.ai GLM coding-plan key)
 #   2. create the repo variable  AW_FIRST_PASS_REVIEW_ENABLED  = true
 #   3. a runner must match the callee's runs-on: labeled [self-hosted, aw],
-#      or set vars.RUNNER_AW (JSON array) — otherwise the call queues forever
+#      or set vars.RUNNER_AW (JSON array) — otherwise the call queues forever.
+#      Ops contract: aw-labeled runners must not share a host/Docker daemon
+#      (fixed MCP gateway port + container name collide across runs).
 # Until then the job skips on every PR. The seeder does not copy
 # ZAI_API_KEY — a repo admin must set it (org secret/plan key, never
 # committed).
