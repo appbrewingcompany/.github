@@ -1,0 +1,8 @@
+{
+  "name": "Agent First-Pass Review Workflow",
+  "description": "First-pass agent PR review via the org gh-aw reusable workflow. Callable from private org repositories only. Inert until ZAI_API_KEY is set and the AW_FIRST_PASS_REVIEW_ENABLED repo variable is true.",
+  "iconName": "github",
+  "categories": [
+    "automation"
+  ]
+}

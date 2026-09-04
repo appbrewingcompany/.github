@@ -1,0 +1,38 @@
+# First-pass agent review (gh-aw) thin caller. Implementation lives centrally
+# in appbrewingcompany/.github-private — change it there, once, for all repos.
+#
+# INERT until enabled (no red PRs while the engine secret is missing):
+#   1. set the repo secret  ZAI_API_KEY  (z.ai GLM coding-plan key)
+#   2. create the repo variable  AW_FIRST_PASS_REVIEW_ENABLED  = true
+#   3. a runner must match the callee's runs-on: labeled [self-hosted, aw],
+#      or set vars.RUNNER_AW (JSON array) — otherwise the call queues forever.
+#      Ops contract: aw-labeled runners must not share a host/Docker daemon
+#      (fixed MCP gateway port + container name collide across runs).
+# Until then the job skips on every PR. The seeder does not copy
+# ZAI_API_KEY — a repo admin must set it (org secret/plan key, never
+# committed).
+name: Agent First-Pass Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  call-aw-first-pass-review:
+    # Enable switch: add the repo variable AW_FIRST_PASS_REVIEW_ENABLED=true
+    # once the ZAI_API_KEY secret exists — before that the agent run would
+    # fail its secret verification and go red on every PR.
+    if: vars.AW_FIRST_PASS_REVIEW_ENABLED == 'true'
+    uses: appbrewingcompany/.github-private/.github/workflows/aw-first-pass-review.lock.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+    # Must COVER the callee's job-level requests (a called workflow cannot
+    # exceed the caller's grant): the lock's conclusion + safe_outputs jobs
+    # need issues: write (create_report_incomplete_issue) alongside the
+    # comment writes.
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
+    secrets: inherit
