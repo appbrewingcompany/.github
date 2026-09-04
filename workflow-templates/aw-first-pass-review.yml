@@ -4,6 +4,8 @@
 # INERT until enabled (no red PRs while the engine secret is missing):
 #   1. set the repo secret  ZAI_API_KEY  (z.ai GLM coding-plan key)
 #   2. create the repo variable  AW_FIRST_PASS_REVIEW_ENABLED  = true
+#   3. a runner must match the callee's runs-on: labeled [self-hosted, aw],
+#      or set vars.RUNNER_AW (JSON array) — otherwise the call queues forever
 # Until then the job skips on every PR. The seeder does not copy
 # ZAI_API_KEY — a repo admin must set it (org secret/plan key, never
 # committed).
@@ -31,9 +33,13 @@ jobs:
     uses: appbrewingcompany/.github-private/.github/workflows/aw-first-pass-review.lock.yml@main
     with:
       pr-number: ${{ github.event.pull_request.number }}
+    # Must COVER the callee's job-level requests (a called workflow cannot
+    # exceed the caller's grant): the lock's conclusion + safe_outputs jobs
+    # need issues: write (create_report_incomplete_issue) alongside the
+    # comment writes.
     permissions:
       actions: read
       contents: read
-      issues: read
+      issues: write
       pull-requests: write
     secrets: inherit
