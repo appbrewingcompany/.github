@@ -17,15 +17,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-permissions:
-  contents: read
-  issues: read
-  pull-requests: read
-
-concurrency:
-  group: aw-first-pass-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   call-aw-first-pass-review:
     # Enable switch: add the repo variable AW_FIRST_PASS_REVIEW_ENABLED=true
