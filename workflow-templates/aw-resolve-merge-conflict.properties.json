@@ -1,0 +1,8 @@
+{
+  "name": "Agent Merge-Conflict Resolver Workflow",
+  "description": "Auto-resolve base-into-head merge conflicts on PRs via the org gh-aw reusable workflow (bot-authored PRs + opt-in label by default). Callable from private org repositories only. Inert until ZAI_API_KEY is set and AW_RESOLVE_CONFLICTS_ENABLED is true.",
+  "iconName": "github",
+  "categories": [
+    "automation"
+  ]
+}

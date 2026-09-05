@@ -1,0 +1,156 @@
+# Agent merge-conflict resolver (gh-aw) thin caller. Implementation lives
+# centrally in appbrewingcompany/.github-private — change it there, once, for
+# all repos. $default-branch/$default-runner are substituted by the seeder.
+#
+# INERT until enabled (no agent runs while the switch is off):
+#   1. set the repo secret  ZAI_API_KEY  (z.ai GLM coding-plan key; the
+#      seeder does NOT copy it — a repo admin must set it)
+#   2. create the repo variable  AW_RESOLVE_CONFLICTS_ENABLED = true
+#   3. a runner must match the callee's runs-on: labeled [self-hosted, aw],
+#      or set vars.RUNNER_AW (JSON array) — otherwise engine jobs queue
+#      forever. Ops contract: aw-labeled runners must not share a
+#      host/Docker daemon (fixed MCP gateway port + container name).
+#   4. (recommended) secret GH_AW_CI_TRIGGER_TOKEN — pushes made with the
+#      workflow's own token do NOT trigger CI (GitHub suppresses events
+#      created by GITHUB_TOKEN); set an App token (contents:write here) so
+#      resolved merge commits re-run PR checks — without it the PR stays
+#      un-re-checked until another event fires.
+#
+# Scope — who gets automatic resolution (repo variable
+# AW_RESOLVE_CONFLICTS_SCOPE, default `bots`):
+#   bots — PRs authored by registered org agent bots, plus any PR carrying
+#          the `auto-resolve-conflicts` label (manual opt-in for human PRs)
+#   all  — every open PR
+# Draft PRs are always skipped. `workflow_dispatch` with a pr-number is the
+# deliberate human escape hatch (same precedent as auto-merge) and overrides
+# both the scope and the conflict gate.
+name: Resolve Merge Conflicts (agent)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches: [$default-branch]
+  schedule:
+    # hourly safety net: `mergeable` settles asynchronously, so push/synchronize
+    # runs can miss a conflict that GitHub hadn't computed yet
+    - cron: "41 * * * *"
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: PR number to resolve (scope + conflict gates are waived).
+        type: number
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Regular (non-agent) detection: GitHub has no "merge conflict" event, so
+  # this job decides which PRs are actually CONFLICTING and hands the agent
+  # workflow one PR per matrix entry. No LLM runs unless a conflict exists.
+  detect:
+    if: vars.AW_RESOLVE_CONFLICTS_ENABLED == 'true'
+    runs-on: $default-runner
+    timeout-minutes: 5
+    outputs:
+      prs: ${{ steps.find.outputs.prs }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # bots list mirrors github-agents/agent-registry.*.yml (agent bots only;
+      # service Apps like appbrew-merge/appbrew-deps reach this via the
+      # auto-resolve-conflicts label, not by author)
+      BOTS: >-
+        appbrew-zod[bot] appbrew-cloud[bot] appbrew-cortana[bot]
+        appbrew-akira[bot] appbrew-asuka[bot] appbrew-dev[bot]
+        appbrew-infra[bot] appbrew-org-admin[bot]
+      OPT_IN_LABEL: auto-resolve-conflicts
+      EVENT: ${{ github.event_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+      SCOPE: ${{ vars.AW_RESOLVE_CONFLICTS_SCOPE || 'bots' }}
+    steps:
+      - name: Find conflicted open PRs
+        id: find
+        run: |
+          set -euo pipefail
+          FIELDS="number,author,labels,mergeable,state,isDraft"
+
+          # `mergeable` is computed asynchronously by GitHub — UNKNOWN right
+          # after a push to the base branch. Poll up to ~2 minutes.
+          PR_JSON=""
+          for _ in $(seq 1 12); do
+            if [ "$EVENT" = "push" ] || [ "$EVENT" = "schedule" ]; then
+              OUT=$(gh pr list --state open --limit 100 --json "$FIELDS" 2>&1) || OUT=""
+            else
+              OUT=$(gh pr view "$PR_NUMBER" --json "$FIELDS" 2>&1) || OUT=""
+            fi
+            if [ -n "$OUT" ] && ! printf '%s' "$OUT" | grep -q '"mergeable":"UNKNOWN"'; then
+              case "$OUT" in
+                '['*|'{'*) PR_JSON="$OUT"; break ;;
+                *) : ;;  # gh error output, not JSON — retry
+              esac
+            fi
+            sleep 10
+          done
+
+          if [ -z "$PR_JSON" ]; then
+            echo "detect: mergeable never settled or PR not found — nothing to do this run" >&2
+            echo "prs=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          prs=$(PR_JSON="$PR_JSON" python3 - <<'PY'
+          import json, os
+
+          rows = json.loads(os.environ["PR_JSON"])
+          if isinstance(rows, dict):
+              rows = [rows]
+          bots = set(os.environ["BOTS"].split())
+          opt_in = os.environ["OPT_IN_LABEL"]
+          scope = os.environ["SCOPE"]
+          dispatch = os.environ["EVENT"] == "workflow_dispatch"
+
+          selected = []
+          for pr in rows:
+              if str(pr.get("state", "OPEN")).upper() != "OPEN":
+                  continue
+              if pr.get("isDraft"):
+                  continue
+              labels = [l["name"] if isinstance(l, dict) else str(l)
+                        for l in pr.get("labels", [])]
+              in_scope = (scope == "all" or opt_in in labels
+                          or (pr.get("author") or {}).get("login", "") in bots)
+              if dispatch or (in_scope and pr.get("mergeable") == "CONFLICTING"):
+                  selected.append(pr["number"])
+
+          print(json.dumps(sorted(set(selected))))
+          PY
+          )
+          echo "prs=$prs" >> "$GITHUB_OUTPUT"
+
+  resolve:
+    needs: detect
+    if: needs.detect.result == 'success' && needs.detect.outputs.prs != '[]'
+    strategy:
+      fail-fast: false
+      # One engine run at a time: the gh-aw MCP gateway binds a fixed host
+      # port (18081) + container name, so concurrent runs on one Docker
+      # daemon collide (runner-lane contract in references/workflow-set.md).
+      max-parallel: 1
+      matrix:
+        pr: ${{ fromJSON(needs.detect.outputs.prs) }}
+    uses: appbrewingcompany/.github-private/.github/workflows/aw-resolve-merge-conflict.lock.yml@main
+    with:
+      pr-number: ${{ matrix.pr }}
+    # Must COVER the callee's job-level requests (a called workflow cannot
+    # exceed the caller's grant): safe_outputs needs contents: write (the
+    # push) + pull-requests: write (summary comment) + issues: write
+    # (protected-files fallback + report issues); conclusion/activation need
+    # actions: read.
+    permissions:
+      actions: read
+      contents: write
+      issues: write
+      pull-requests: write
+    secrets: inherit
