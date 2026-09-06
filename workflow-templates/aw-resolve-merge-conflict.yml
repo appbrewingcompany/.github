@@ -21,7 +21,10 @@
 #   bots — PRs authored by registered org agent bots, plus any PR carrying
 #          the `auto-resolve-conflicts` label (manual opt-in for human PRs)
 #   all  — every open PR
-# Draft PRs are always skipped. `workflow_dispatch` with a pr-number is the
+# Draft PRs are always skipped, and PRs labeled `conflict-resolution-escalated`
+# (applied by the agent on an ESCALATED verdict) are skipped until a human
+# removes the label — that stops the hourly sweep from retrying unresolvable
+# PRs forever. `workflow_dispatch` with a pr-number is the
 # deliberate human escape hatch (same precedent as auto-merge) and overrides
 # both the scope and the conflict gate.
 name: Resolve Merge Conflicts (agent)
@@ -66,6 +69,7 @@ jobs:
         appbrew-akira[bot] appbrew-asuka[bot] appbrew-dev[bot]
         appbrew-infra[bot] appbrew-org-admin[bot]
       OPT_IN_LABEL: auto-resolve-conflicts
+      ESCALATED_LABEL: conflict-resolution-escalated
       EVENT: ${{ github.event_name }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
       SCOPE: ${{ vars.AW_RESOLVE_CONFLICTS_SCOPE || 'bots' }}
@@ -85,7 +89,7 @@ jobs:
             else
               OUT=$(gh pr view "$PR_NUMBER" --json "$FIELDS" 2>&1) || OUT=""
             fi
-            if [ -n "$OUT" ] && ! printf '%s' "$OUT" | grep -q '"mergeable":"UNKNOWN"'; then
+            if [ -n "$OUT" ] && ! printf '%s' "$OUT" | grep -Eq '"mergeable": *"UNKNOWN"'; then
               case "$OUT" in
                 '['*|'{'*) PR_JSON="$OUT"; break ;;
                 *) : ;;  # gh error output, not JSON — retry
@@ -108,6 +112,7 @@ jobs:
               rows = [rows]
           bots = set(os.environ["BOTS"].split())
           opt_in = os.environ["OPT_IN_LABEL"]
+          escalated = os.environ["ESCALATED_LABEL"]
           scope = os.environ["SCOPE"]
           dispatch = os.environ["EVENT"] == "workflow_dispatch"
 
@@ -116,6 +121,11 @@ jobs:
               if str(pr.get("state", "OPEN")).upper() != "OPEN":
                   continue
               if pr.get("isDraft"):
+                  continue
+              # Retry-storm backstop: the agent labels on an ESCALATED
+              # verdict; skip those until a human removes the label.
+              if escalated in [l["name"] if isinstance(l, dict) else str(l)
+                                     for l in pr.get("labels", [])]:
                   continue
               labels = [l["name"] if isinstance(l, dict) else str(l)
                         for l in pr.get("labels", [])]
