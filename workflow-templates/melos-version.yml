@@ -5,10 +5,7 @@ on:
 jobs:
   call-melos-version:
     uses: appbrewingcompany/.github-private/.github/workflows/melos-version.yml@main
-    with:
-      # $default-runner: substituted by the seeder (self-hosted for private
-      # repos, ubuntu-latest for public repos).
-      runner: $default-runner
+    # No runner input: the reusable default (linux-light, 2026-10-15) applies.
     permissions:
       contents: write
     secrets: inherit
